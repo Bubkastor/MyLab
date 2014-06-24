@@ -10,32 +10,48 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.Drawing.Imaging;
-
+using System.Threading;
 
 
 namespace MyLab
 {
     public partial class Form1 : Form
     {
+        private delegate void ReadImage();
+        private delegate void ProgressBar2();
+        private delegate void ProgressBar3();
+
         private string[] files_in_folder;
         private List<string> JPEGFiles = new List<string>();
-        private List<Image> image = new List<Image>();
+
+        private int progresBar2 = 0;
+        private int progresBar3 = 0;
+
+        private void ProgressBar2Changed()
+        {
+            progressBarReadFiles.Value = (progresBar2 + 1) * 100 / JPEGFiles.Count;
+            progresBar2 += 1;
+        }
+        private void ProgressBar3Changed()
+        {
+            progressBarConvertation.Value = (progresBar3 + 1) * 100 / JPEGFiles.Count;
+            if (progressBarConvertation.Value == 100)
+            {
+                MessageBox.Show("Конвертация завершена");
+            }
+            progresBar3 += 1;
+        }
+
         public Form1()
         {
             InitializeComponent();
             backgroundWorker1.WorkerReportsProgress = true;
             backgroundWorker1.WorkerSupportsCancellation = true;
-
-            backgroundWorker2.WorkerReportsProgress = true;
-            backgroundWorker2.WorkerSupportsCancellation = true;
-
-            backgroundWorker3.WorkerReportsProgress = true;
-            backgroundWorker3.WorkerSupportsCancellation = true;
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            if ((backgroundWorker1.IsBusy != true) || (backgroundWorker2.IsBusy != true) || (backgroundWorker3.IsBusy != true))
+            if (backgroundWorker1.IsBusy != true)
             {
                 textBox1.Text = String.Empty;
                 folderBrowserDialog1.ShowDialog();
@@ -45,7 +61,7 @@ namespace MyLab
 
         private void buttonConvert_Click(object sender, EventArgs e)
         {
-            if ((backgroundWorker1.IsBusy != true) || (backgroundWorker2.IsBusy != true) || (backgroundWorker3.IsBusy != true))
+            if (backgroundWorker1.IsBusy != true)
             {
                 backgroundWorker1.RunWorkerAsync();
             }
@@ -91,7 +107,7 @@ namespace MyLab
         {
             if (JPEGFiles.Count != 0)
             {
-                backgroundWorker2.RunWorkerAsync();
+                this.Invoke(new ReadImage(this.ReadJPGFiles));   
             }
             else
             {
@@ -99,68 +115,49 @@ namespace MyLab
             }
         }
 
-        //Чтение
-        private void backgroundWorker2_DoWork(object sender, DoWorkEventArgs e)
+        public class ImageObject
         {
-            BackgroundWorker worker = sender as BackgroundWorker;
+            public FileStream filestm;
+            public string path_of_file;
+        }
+
+        private void Thread(object jpgFile)
+        {
+            ImageObject file = (ImageObject)jpgFile;
+            FileStream jpg_file = file.filestm;
+            String outputPath = Path.GetDirectoryName(file.path_of_file) + @"\" + 
+                Path.GetFileNameWithoutExtension(file.path_of_file) + ".png";
+            new Bitmap(jpg_file).Save(outputPath, ImageFormat.Png);
+
+            this.Invoke(new ProgressBar3(this.ProgressBar3Changed));
+        }
+        public void ReadJPGFiles()
+        {
+            AsyncCallback readImageCallback = new AsyncCallback(ReadImageCallback);
             int count_jpgs = JPEGFiles.Count;
             for (int n = 0; n < count_jpgs; n++)
             {
-                image.Add(Image.FromFile(JPEGFiles[n]));
                 int i = n;
-                //ImageStateObject state = new ImageStateObject();
-                //state.imageNum = n;
-                //state.path_of_file = JPEGFiles[i];
-                //FileStream fs = new FileStream(JPEGFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, 1, true);
-                //state.filestm = fs;
-                //int size = (int)fs.Length;
-                //byte[] data = new byte[size + 1];
-                //fs.BeginRead(data, 0, size,null,state);
-                //fs.BeginRead(data, 0, size, readImageCallback, state);
-                worker.ReportProgress((n + 1) * 100 / count_jpgs);
+                ImageObject imageObj = new ImageObject();
+                imageObj.path_of_file = JPEGFiles[i];
+                FileStream fs = new FileStream(JPEGFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, 1, true);
+                imageObj.filestm = fs;
+                int size = (int)fs.Length;
+                byte[] data = new byte[size + 1];
+                fs.BeginRead(data, 0, size, readImageCallback, imageObj);
             }
         }
 
-        private void backgroundWorker2_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        public void ReadImageCallback(IAsyncResult asyncResult)
         {
-            progressBarReadFiles.Value = e.ProgressPercentage;
-        }
+            ImageObject state = (ImageObject)asyncResult.AsyncState;
+            state.filestm.EndRead(asyncResult);
+            this.Invoke(new ProgressBar2(this.ProgressBar2Changed));
 
-        private void backgroundWorker2_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            backgroundWorker3.RunWorkerAsync();
-        }
-
-        //Обработка
-        private void backgroundWorker3_DoWork(object sender, DoWorkEventArgs e)
-        {
-            BackgroundWorker worker = sender as BackgroundWorker;
-
-            int count_jpgs = image.Count;
-            for (int i = 0; i <= count_jpgs; i++)
+            ThreadPool.QueueUserWorkItem(delegate
             {
-                if (worker.CancellationPending == true)
-                {
-                    e.Cancel = true;
-                    break;
-                }
-                else
-                {
-                    image[i].Save(Path.GetDirectoryName(JPEGFiles[i]) + @"\" + Path.GetFileNameWithoutExtension(JPEGFiles[i])+ ".png", ImageFormat.Png);
-                    image[i].Dispose();
-                    worker.ReportProgress((i + 1) * 100 / count_jpgs);
-                }
-            }
-        }
-
-        private void backgroundWorker3_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            progressBarConvertation.Value = e.ProgressPercentage;
-        }
-
-        private void backgroundWorker3_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            MessageBox.Show("Обработка завершена");
+                Thread(state);
+            });
         }
     }
 }
