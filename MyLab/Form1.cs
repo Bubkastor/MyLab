@@ -37,7 +37,7 @@ namespace MyLab
             progressBarConvertation.Value = (progresBar3 + 1) * 100 / JPEGFiles.Count;
             if (progressBarConvertation.Value == 100)
             {
-                MessageBox.Show("Конвертация завершена");
+                MessageBox.Show("Конвертация завершена.");
             }
             progresBar3 += 1;
         }
@@ -71,7 +71,7 @@ namespace MyLab
         private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
-            Regex reg = new Regex(@"\.(?i:)(?:jpg|jpeg|JPG|JPEG)$");
+            Regex reg = new Regex(@"\.(?:jpg|jpeg|JPG|JPEG)$");
             
 
             int files_count_jpgs_folder = 0;
@@ -95,6 +95,26 @@ namespace MyLab
                     worker.ReportProgress(percentage);
                 }
             }
+            if (JPEGFiles.Count != 0)
+            {
+                AsyncCallback readImageCallback = new AsyncCallback(ReadImageCallback);
+                int count_jpgs = JPEGFiles.Count;
+                for (int n = 0; n < count_jpgs; n++)
+                {
+                    int i = n;
+                    ImageObject imageObj = new ImageObject();
+                    imageObj.path_of_file = JPEGFiles[i];
+                    FileStream fs = new FileStream(JPEGFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, 1, true);
+                    imageObj.filestream = fs;
+                    int size = (int)fs.Length;
+                    byte[] data = new byte[size + 1];
+                    fs.BeginRead(data, 0, size, readImageCallback, imageObj);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Нет jpg файлов в директории.");
+            }
 
         }
 
@@ -105,26 +125,19 @@ namespace MyLab
 
         private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (JPEGFiles.Count != 0)
-            {
-                this.Invoke(new ReadImage(this.ReadJPGFiles));   
-            }
-            else
-            {
-                MessageBox.Show("Нет jpg файлов в директории.");
-            }
+
         }
 
         public class ImageObject
         {
-            public FileStream filestm;
+            public FileStream filestream;
             public string path_of_file;
         }
 
         private void Thread(object jpgFile)
         {
             ImageObject file = (ImageObject)jpgFile;
-            FileStream jpg_file = file.filestm;
+            FileStream jpg_file = file.filestream;
             String outputPath = Path.GetDirectoryName(file.path_of_file) + @"\" + 
                 Path.GetFileNameWithoutExtension(file.path_of_file) + ".png";
             new Bitmap(jpg_file).Save(outputPath, ImageFormat.Png);
@@ -133,30 +146,18 @@ namespace MyLab
         }
         public void ReadJPGFiles()
         {
-            AsyncCallback readImageCallback = new AsyncCallback(ReadImageCallback);
-            int count_jpgs = JPEGFiles.Count;
-            for (int n = 0; n < count_jpgs; n++)
-            {
-                int i = n;
-                ImageObject imageObj = new ImageObject();
-                imageObj.path_of_file = JPEGFiles[i];
-                FileStream fs = new FileStream(JPEGFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, 1, true);
-                imageObj.filestm = fs;
-                int size = (int)fs.Length;
-                byte[] data = new byte[size + 1];
-                fs.BeginRead(data, 0, size, readImageCallback, imageObj);
-            }
+
         }
 
         public void ReadImageCallback(IAsyncResult asyncResult)
         {
-            ImageObject state = (ImageObject)asyncResult.AsyncState;
-            state.filestm.EndRead(asyncResult);
+            ImageObject image = (ImageObject)asyncResult.AsyncState;
+            image.filestream.EndRead(asyncResult);
             this.Invoke(new ProgressBar2(this.ProgressBar2Changed));
 
             ThreadPool.QueueUserWorkItem(delegate
             {
-                Thread(state);
+                Thread(image);
             });
         }
     }
