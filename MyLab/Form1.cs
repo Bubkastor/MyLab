@@ -22,26 +22,45 @@ namespace MyLab
         private delegate void ProgressBar3();
 
         private string[] files_in_folder;
-        private List<string> JPEGFiles = new List<string>();
+        private List<string> PNGFiles = new List<string>();
+        public class ImageObject
+        {
+            public Image image { get; set; }
+            public String oldPath { get; set; }
+            public String newPath { get; set; }
+            
+        }
+        private List<ImageObject> filesImage = new List<ImageObject>();
+        private bool isCancled = false;
 
-        private int progresBar2 = 0;
+        private List<Task> task = new List<Task>();
         private int progresBar3 = 0;
 
-        private void ProgressBar2Changed()
-        {
-            progressBarReadFiles.Value = (progresBar2 + 1) * 100 / JPEGFiles.Count;
-            progresBar2 += 1;
-        }
+        private static CancellationTokenSource cts2 = new CancellationTokenSource();
+        private CancellationToken token2 = cts2.Token;
+
         private void ProgressBar3Changed()
         {
-            progressBarConvertation.Value = (progresBar3 + 1) * 100 / JPEGFiles.Count;
+            progressBarConvertation.Value = (progresBar3 + 1) * 100 / PNGFiles.Count;
             if (progressBarConvertation.Value == 100)
             {
                 MessageBox.Show("Конвертация завершена.");
             }
             progresBar3 += 1;
         }
-
+        private void Complited()
+        {
+            task = new List<Task>(); ;
+            filesImage = new List<ImageObject>(); ;
+            PNGFiles = new List<string>();
+            isCancled = false;
+            progressBarSearch.Value = 0;
+            progressBarConvertation.Value = 0;
+            progresBar3 = 0;
+            backgroundWorker1.WorkerSupportsCancellation = true;
+            cts2 = new CancellationTokenSource();
+            token2 = cts2.Token;
+        }
         public Form1()
         {
             InitializeComponent();
@@ -63,16 +82,16 @@ namespace MyLab
         {
             if (backgroundWorker1.IsBusy != true)
             {
+                Complited();
                 backgroundWorker1.RunWorkerAsync();
             }
         }
 
-        //Поиск
-        private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+        private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs b)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
-            Regex reg = new Regex(@"\.(?:jpg|jpeg|JPG|JPEG)$");
-            
+            Regex reg = new Regex(@"\.(?:png|PNG)$");
+
 
             int files_count_jpgs_folder = 0;
             files_in_folder = Directory.GetFiles(textBox1.Text, "*.*", SearchOption.AllDirectories);
@@ -82,7 +101,7 @@ namespace MyLab
             {
                 if (worker.CancellationPending == true)
                 {
-                    e.Cancel = true;
+                    b.Cancel = true;
                     break;
                 }
                 else
@@ -90,26 +109,60 @@ namespace MyLab
                     int percentage = (i + 1) * 100 / files_count_jpgs_folder;
                     if (reg.IsMatch(files_in_folder[i]))
                     {
-                        JPEGFiles.Add(files_in_folder[i]);
+                        PNGFiles.Add(files_in_folder[i]);
                     }   
                     worker.ReportProgress(percentage);
                 }
             }
-            if (JPEGFiles.Count != 0)
+
+            if (PNGFiles.Count != 0)
             {
-                AsyncCallback readImageCallback = new AsyncCallback(ReadImageCallback);
-                int count_jpgs = JPEGFiles.Count;
+
+                int count_jpgs = PNGFiles.Count;
                 for (int n = 0; n < count_jpgs; n++)
                 {
-                    int i = n;
-                    ImageObject imageObj = new ImageObject();
-                    imageObj.path_of_file = JPEGFiles[i];
-                    FileStream fs = new FileStream(JPEGFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, 1, true);
-                    imageObj.filestream = fs;
-                    int size = (int)fs.Length;
-                    byte[] data = new byte[size + 1];
-                    fs.BeginRead(data, 0, size, readImageCallback, imageObj);
+                    if (worker.CancellationPending == true)
+                    {
+                        b.Cancel = true;
+                        break;
+                    }
+                    else
+                    {
+                        ImageObject temp = new ImageObject();
+                        temp.image = Image.FromFile(PNGFiles[n]);
+                        temp.oldPath = PNGFiles[n];
+                        filesImage.Add(temp);
+
+                    }
                 }
+
+                filesImage.ForEach(delegate(ImageObject obj)
+                {
+                    task.Add(Task.Factory.StartNew(() =>
+                    {
+                        if (token2.IsCancellationRequested)
+                        {
+                            token2.ThrowIfCancellationRequested();
+                        }
+                        else
+                        {
+                            obj.newPath = Path.GetDirectoryName(obj.oldPath) + @"\" + Path.GetFileNameWithoutExtension(obj.oldPath) + ".jpg";
+                            this.Invoke(new ProgressBar3(this.ProgressBar3Changed));
+                            obj.image.Save(obj.newPath, ImageFormat.Jpeg);
+                        }
+                    }, token2));
+
+                });
+
+                try
+                {
+                    Task.WaitAll(task.ToArray());
+                }
+                catch { } 
+                filesImage.ForEach(delegate(ImageObject obj)
+                {
+                    obj.image.Dispose();
+                });
             }
             else
             {
@@ -117,7 +170,26 @@ namespace MyLab
             }
 
         }
+        private long GetSizeFile(String path)
+        {
+            var fileName = path;
+            FileInfo fi = new FileInfo(fileName);
+            return fi.Length;
+        }
 
+        private String SizeSave()
+        {
+            String result;
+            long oldSize = 0;
+            long newSize = 0;
+            filesImage.ForEach(delegate(ImageObject obj)
+            {
+                oldSize += GetSizeFile(obj.oldPath);
+                newSize += GetSizeFile(obj.newPath);
+            });
+            result = (oldSize - newSize).ToString();
+            return result;
+        }
         private void backgroundWorker1_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             progressBarSearch.Value = e.ProgressPercentage;
@@ -125,40 +197,24 @@ namespace MyLab
 
         private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-
-        }
-
-        public class ImageObject
-        {
-            public FileStream filestream;
-            public string path_of_file;
-        }
-
-        private void Thread(object jpgFile)
-        {
-            ImageObject file = (ImageObject)jpgFile;
-            FileStream jpg_file = file.filestream;
-            String outputPath = Path.GetDirectoryName(file.path_of_file) + @"\" + 
-                Path.GetFileNameWithoutExtension(file.path_of_file) + ".png";
-            new Bitmap(jpg_file).Save(outputPath, ImageFormat.Png);
-
-            this.Invoke(new ProgressBar3(this.ProgressBar3Changed));
-        }
-        public void ReadJPGFiles()
-        {
-
-        }
-
-        public void ReadImageCallback(IAsyncResult asyncResult)
-        {
-            ImageObject image = (ImageObject)asyncResult.AsyncState;
-            image.filestream.EndRead(asyncResult);
-            this.Invoke(new ProgressBar2(this.ProgressBar2Changed));
-
-            ThreadPool.QueueUserWorkItem(delegate
+            if (!isCancled)
             {
-                Thread(image);
-            });
+                SaveBite.Text = SizeSave();
+            }
+            Complited();
+            //C:\Users\Albert\Pictures\NewPNG
+        }
+
+
+        private void buttonCancel_Click(object sender, EventArgs e)
+        {
+            if (backgroundWorker1.WorkerSupportsCancellation == true)
+            {
+                backgroundWorker1.CancelAsync();
+            }
+            isCancled = true;
+            cts2.Cancel();
+            MessageBox.Show("Отменено.");
         }
     }
 }

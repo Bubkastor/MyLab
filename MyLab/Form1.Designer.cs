@@ -29,16 +29,17 @@
         private void InitializeComponent()
         {
             this.progressBarSearch = new System.Windows.Forms.ProgressBar();
-            this.progressBarReadFiles = new System.Windows.Forms.ProgressBar();
             this.progressBarConvertation = new System.Windows.Forms.ProgressBar();
             this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
             this.buttonConvert = new System.Windows.Forms.Button();
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
+            this.SaveBite = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
+            this.buttonCancel = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // progressBarSearch
@@ -53,17 +54,9 @@
             this.progressBarSearch.Step = 1;
             this.progressBarSearch.TabIndex = 1;
             // 
-            // progressBarReadFiles
-            // 
-            this.progressBarReadFiles.Location = new System.Drawing.Point(0, 196);
-            this.progressBarReadFiles.Name = "progressBarReadFiles";
-            this.progressBarReadFiles.RightToLeftLayout = true;
-            this.progressBarReadFiles.Size = new System.Drawing.Size(100, 23);
-            this.progressBarReadFiles.TabIndex = 2;
-            // 
             // progressBarConvertation
             // 
-            this.progressBarConvertation.Location = new System.Drawing.Point(0, 238);
+            this.progressBarConvertation.Location = new System.Drawing.Point(0, 196);
             this.progressBarConvertation.Name = "progressBarConvertation";
             this.progressBarConvertation.Size = new System.Drawing.Size(100, 23);
             this.progressBarConvertation.TabIndex = 3;
@@ -77,19 +70,10 @@
             this.label1.TabIndex = 4;
             this.label1.Text = "Поиск файлов";
             // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(-3, 180);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(85, 13);
-            this.label2.TabIndex = 5;
-            this.label2.Text = "Чтение файлов";
-            // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(-3, 222);
+            this.label3.Location = new System.Drawing.Point(-3, 180);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(73, 13);
             this.label3.TabIndex = 6;
@@ -128,20 +112,48 @@
             this.backgroundWorker1.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.backgroundWorker1_ProgressChanged);
             this.backgroundWorker1.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker1_RunWorkerCompleted);
             // 
+            // SaveBite
+            // 
+            this.SaveBite.AutoSize = true;
+            this.SaveBite.Location = new System.Drawing.Point(142, 154);
+            this.SaveBite.Name = "SaveBite";
+            this.SaveBite.Size = new System.Drawing.Size(0, 13);
+            this.SaveBite.TabIndex = 9;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(143, 131);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(99, 13);
+            this.label4.TabIndex = 10;
+            this.label4.Text = "Байтов сохранено";
+            // 
+            // buttonCancel
+            // 
+            this.buttonCancel.Location = new System.Drawing.Point(245, 196);
+            this.buttonCancel.Name = "buttonCancel";
+            this.buttonCancel.Size = new System.Drawing.Size(75, 65);
+            this.buttonCancel.TabIndex = 11;
+            this.buttonCancel.Text = "Отмена";
+            this.buttonCancel.UseVisualStyleBackColor = true;
+            this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(404, 261);
+            this.Controls.Add(this.buttonCancel);
+            this.Controls.Add(this.label4);
+            this.Controls.Add(this.SaveBite);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.buttonConvert);
             this.Controls.Add(this.label3);
-            this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.progressBarConvertation);
             this.Controls.Add(this.progressBarSearch);
-            this.Controls.Add(this.progressBarReadFiles);
             this.Name = "Form1";
             this.Text = "Form1";
             this.ResumeLayout(false);
@@ -151,17 +163,18 @@
 
         #endregion
 
-        private System.Windows.Forms.ProgressBar progressBarReadFiles;
         private System.Windows.Forms.ProgressBar progressBarConvertation;
         private System.Windows.Forms.ProgressBar progressBarSearch;
         private System.ComponentModel.BackgroundWorker backgroundWorker1;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button buttonConvert;
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
+        private System.Windows.Forms.Label SaveBite;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Button buttonCancel;
 
     }
 }
